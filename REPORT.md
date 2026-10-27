@@ -1,18 +1,30 @@
 # Assignment #3: Report
 
-**Name:**
-**Student ID:**
-**Email:**
+**Name:** Eswar kumar panta
+
+**Student ID:** 801505751
+
+**Email:** epanta@charlotte.edu
 
 ---
 
 ## Seed and commands
 
-Seed used for `datagen.py`:
+Seed used for `datagen.py`: 801505751
 
 The commands you ran, in order:
 
 ```bash
+python3 datagen.py 801505751
+docker compose up -d
+docker cp main.py spark-master:/opt/spark/work-dir/
+
+docker exec -it spark-master /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  /opt/spark/work-dir/main.py \
+  /opt/spark/work-dir/shared/input \
+  /opt/spark/work-dir/shared/output
+docker compose down
 
 ```
 
@@ -32,7 +44,7 @@ The five counts:
 
 | rows_total | bad_time | bad_fare | removed | rows_kept |
 | ---------- | -------- | -------- | ------- | --------- |
-|            |          |          |         |           |
+|     100000 |  1441    |     1484 |    2925 |     97075 |
 
 Two or three bad rows, as they appear in `trips.csv`:
 
@@ -47,7 +59,17 @@ Two or three bad rows, as they appear in `trips.csv`:
 First ten rows, and one sentence on what they show:
 
 ```
-
+day,zone_id,zone_name,trips,revenue
+2026-09-01,1,Uptown Center,319,6318.78
+2026-09-01,2,First Ward,228,4299.48
+2026-09-01,3,Fourth Ward,213,4074.82
+2026-09-01,4,South End,240,4883.06
+2026-09-01,5,Dilworth,172,3414.4
+2026-09-01,6,Plaza Midwood,129,2535.29
+2026-09-01,7,NoDa,166,3350.72
+2026-09-01,8,University City,219,4375.68
+2026-09-01,9,Ballantyne,123,2442.47
+2026-09-01,10,SouthPark,191,3570.26
 ```
 
 ## Part 2b: each driver's busiest day
@@ -55,7 +77,17 @@ First ten rows, and one sentence on what they show:
 First ten rows, and one sentence on what they show:
 
 ```
-
+driver_id,day,trips
+D001,2026-09-19,17
+D002,2026-09-26,23
+D003,2026-09-16,20
+D004,2026-09-07,19
+D005,2026-09-10,23
+D006,2026-09-16,24
+D007,2026-09-17,25
+D008,2026-09-11,20
+D009,2026-09-09,23
+D010,2026-09-06,19
 ```
 
 ## Part 3: activity per borough (Spark SQL)
@@ -63,11 +95,25 @@ First ten rows, and one sentence on what they show:
 Your SQL query and its result:
 
 ```sql
-
+spark.sql("""
+        SELECT z.borough,
+               COUNT(*)                    AS trips,
+               ROUND(SUM(t.fare), 2)       AS revenue,
+               ROUND(AVG(t.distance_km), 2)    AS avg_distance_km
+        FROM trips t
+        JOIN zones z ON t.pickup_zone = z.zone_id
+        GROUP BY z.borough
+        ORDER BY revenue DESC
+    """)
 ```
 
 ```
-
+borough,trips,revenue,avg_distance_km
+Central,39224,773201.95,5.34
+South,17464,345573.31,5.36
+North,15157,297778.81,5.32
+East,13082,261509.07,5.43
+West,12148,240056.84,5.36
 ```
 
 ---
