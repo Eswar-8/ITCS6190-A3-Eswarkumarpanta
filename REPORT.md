@@ -77,13 +77,37 @@ Your SQL query and its result:
 `explain()` output of part 2a (DataFrame API):
 
 ```
-
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [day#59 ASC NULLS FIRST, zone_id#9 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(day#59 ASC NULLS FIRST, zone_id#9 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=1543]
+      +- HashAggregate(keys=[day#59, zone_id#9, zone_name#10], functions=[count(1), sum(fare#57)])
+         +- Exchange hashpartitioning(day#59, zone_id#9, zone_name#10, 200), ENSURE_REQUIREMENTS, [plan_id=1540]
+            +- HashAggregate(keys=[day#59, zone_id#9, zone_name#10], functions=[partial_count(1), partial_sum(fare#57)])
+               +- Project [fare#57, day#59, zone_id#9, zone_name#10]
+                  +- BroadcastHashJoin [pickup_zone#52], [zone_id#9], Inner, BuildRight, false, false
+                     :- Filter isnotnull(pickup_zone#52)
+                     :  +- FileScan parquet [pickup_zone#52,fare#57,day#59] Batched: true, DataFilters: [isnotnull(pickup_zone#52)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/work-dir/shared/output/clean_trips], PartitionFilters: [], PushedFilters: [IsNotNull(pickup_zone)], ReadSchema: struct<pickup_zone:int,fare:double,day:date>
+                     +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=1535]
+                        +- Filter isnotnull(zone_id#9)
+                           +- FileScan csv [zone_id#9,zone_name#10] Batched: false, DataFilters: [isnotnull(zone_id#9)], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/work-dir/shared/input/zones.csv], PartitionFilters: [], PushedFilters: [IsNotNull(zone_id)], ReadSchema: struct<zone_id:int,zone_name:string>
 ```
 
 `explain()` output of part 3 (Spark SQL):
 
 ```
-
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [revenue#191 DESC NULLS LAST], true, 0
+   +- Exchange rangepartitioning(revenue#191 DESC NULLS LAST, 200), ENSURE_REQUIREMENTS, [plan_id=1593]
+      +- HashAggregate(keys=[borough#11], functions=[count(1), sum(fare#57), avg(distance_km#56)])
+         +- Exchange hashpartitioning(borough#11, 200), ENSURE_REQUIREMENTS, [plan_id=1590]
+            +- HashAggregate(keys=[borough#11], functions=[partial_count(1), partial_sum(fare#57), partial_avg(distance_km#56)])
+               +- Project [distance_km#56, fare#57, borough#11]
+                  +- BroadcastHashJoin [pickup_zone#52], [zone_id#9], Inner, BuildRight, false, false
+                     :- Filter isnotnull(pickup_zone#52)
+                     :  +- FileScan parquet [pickup_zone#52,distance_km#56,fare#57] Batched: true, DataFilters: [isnotnull(pickup_zone#52)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/work-dir/shared/output/clean_trips], PartitionFilters: [], PushedFilters: [IsNotNull(pickup_zone)], ReadSchema: struct<pickup_zone:int,distance_km:double,fare:double>
+                     +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=1585]
+                        +- Filter isnotnull(zone_id#9)
+                           +- FileScan csv [zone_id#9,borough#11] Batched: false, DataFilters: [isnotnull(zone_id#9)], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/work-dir/shared/input/zones.csv], PartitionFilters: [], PushedFilters: [IsNotNull(zone_id)], ReadSchema: struct<zone_id:int,borough:string>
 ```
 
 Your comparison: where the file scans are, which operator is the join and of which kind,
