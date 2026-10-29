@@ -34,11 +34,11 @@ docker compose down
 
 How you implemented rule 1 (dropoff after pickup) and rule 2 (fare present and numeric):
 
-
+I convert the text fare with col("fare").try_cast("double"). Any value that comes back null (empty, N/A, unknown, 12,40) breaks rule 2 and is flagged bad_fare. Rule 1 is the boolean dropoff_ts <= pickup_ts, flagged bad_time. Both flags are computed once on the raw data and all five counts come from one aggregation: bad_time and bad_fare are summed separately, removed is the sum of bad_time OR bad_fare (so a row breaking both counts once), and rows_kept is the rest. The clean rows get fare as DOUBLE, day = to_date(pickup_ts) and duration_min in minutes, and are written to Parquet and read back from there, so parts 2 and 3 do not redo the CSV parse and cleaning.
 
 Why `fare` is read as a string, and what would have happened with a `DOUBLE` column:
 
-
+With a DOUBLE column the CSV reader (default PERMISSIVE mode) silently turns every empty or non-numeric fare into null at read time. The bad fares would then be indistinguishable from missing values, I could not count them separately from the time-rule violations, and I could not see what they were. Reading text and converting with try_cast keeps the raw value visible until I decide to drop the row, and it works under ANSI mode, where a plain cast("N/A" as double) raises an error.
 
 The five counts:
 
@@ -160,6 +160,13 @@ Your comparison: where the file scans are, which operator is the join and of whi
 where the exchanges are and why, and what the two plans have in common although they were
 written in different languages.
 
+Scans. Each plan has two file scans, one per source: a Parquet FileScan of clean_trips (columnar, only the needed columns are read: pickup_zone, fare and day in 2a, pickup_zone, distance_km, fare in 3, with IsNotNull(pickup_zone) pushed down) and a CSV FileScan of the tiny zones.csv.
+
+Join. A BroadcastHashJoin ... Inner, BuildRight. zones is 25 rows, far under the broadcast threshold, so Spark ships it to every executor (BroadcastExchange) and joins each trip in place, with no shuffle of the big table. It is an inner join on pickup_zone = zone_id.
+
+Exchanges. Besides the broadcast, two shuffles: a hashpartitioning exchange on the group keys between the partial and final HashAggregate, so every group lands on one partition, and a rangepartitioning exchange for the final Sort/ORDER BY, which needs a global order.
+
+In common. The two plans have the same shape, because the DataFrame API and SQL both compile to the same Catalyst logical plan and then to the same physical operators: scan, filter, broadcast join, partial aggregate, shuffle, final aggregate, range shuffle, sort. They differ only in the grouping keys (day, zone vs borough), the aggregates computed and the columns each scan reads.
 
 
 ---
@@ -169,12 +176,14 @@ written in different languages.
 With 200 million trips instead of 100,000: what would you keep as it is, and what would you
 change first? One paragraph.
 
+The logic would stay as it is: read the fare as text and try_cast, flag the two rules, count in one pass, write clean data as Parquet and aggregate with the DataFrame API or SQL. The window function in part 2b also scales, since it partitions by driver. What I would change first is the input and the layout: replace the single trips.csv on each executor's local disk with a shared store (HDFS or object storage) and ingest in a splittable, columnar format partitioned by day, so later queries prune files and read only needed columns. Next I would size spark.sql.shuffle.partitions (the default 200 would be too few for 200M rows) and leave adaptive execution on to coalesce and handle skew. I would keep the small zones table as a broadcast join. I would cache the clean data only if several queries reused it.
 
 
 ---
 
 ## Problems and fixes
 
+ no problems encountered
 What went wrong and how you fixed it, with the actual error messages. If nothing went wrong,
 say so.
 
