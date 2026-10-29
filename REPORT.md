@@ -71,6 +71,7 @@ day,zone_id,zone_name,trips,revenue
 2026-09-01,9,Ballantyne,123,2442.47
 2026-09-01,10,SouthPark,191,3570.26
 ```
+Within these ten zones on 1 September, Uptown Center had the most trips (319, $6,318.78) and Ballantyne the fewest (123, $2,442.47).
 
 ## Part 2b: each driver's busiest day
 
@@ -89,6 +90,7 @@ D008,2026-09-11,20
 D009,2026-09-09,23
 D010,2026-09-06,19
 ```
+Each driver’s busiest day falls on a different date and has 17 to 25 trips in these ten rows (D007 highest with 25 on 17 September, D001 lowest with 17 on 19 September), so drivers peak on different days and no single day stands out.
 
 ## Part 3: activity per borough (Spark SQL)
 
@@ -115,7 +117,7 @@ North,15157,297778.81,5.32
 East,13082,261509.07,5.43
 West,12148,240056.84,5.36
 ```
-
+Central is the biggest borough by a wide margin, with 39,224 trips and about $773K in revenue (roughly 40% of the total), while average trip distance is nearly identical across all five boroughs (5.3 to 5.4 km), so the revenue gap comes from trip volume, not longer rides
 ---
 
 ## The two plans
